@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conductor Interface</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h1>Unverified Passengers</h1>
+    
+    <table border="1">
+        <tr>
+            <th>Face Image</th>
+            <th>Actions</th>
+        </tr>
+        {% for passenger in passengers %}
+        <tr>
+            <td>
+                <!-- Display passenger's face image -->
+                <img src="/faces/{{ passenger['face_image'].split('/')[-1] }}" alt="Passenger Image" width="100">
+            </td>
+            <td>
+                <form action="/issue_ticket/{{ passenger['_id'] }}" method="POST">
+                    <label for="source">Source:</label>
+                    <select name="source" id="source_{{ passenger['_id'] }}" required>
+                        <!-- Options will be filled dynamically via JS -->
+                    </select>
+                    
+                    <label for="destination">Destination:</label>
+                    <select name="destination" id="destination_{{ passenger['_id'] }}" required>
+                        <!-- Options will be dynamically filled here -->
+                    </select>
+
+                    <label for="amount">Amount:</label>
+                    <input type="number" name="amount" id="amount_{{ passenger['_id'] }}" readonly required>
+
+                    <button type="submit">Issue Ticket</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <script>
+        // Fetch available sources and destinations when the page loads
+        $(document).ready(function() {
+            $.get('/get_fares', function(data) {
+                var sources = data[0];           // List of sources
+                var destinations = data[1];      // List of destinations
+                console.log("Sources: ", sources);
+                console.log("Destinations: ", destinations);
+
+
+                // Populate sources
+                $('select[name="source"]').each(function() {
+                    var sourceSelect = $(this);
+                    sources.forEach(function(source) {
+                        sourceSelect.append('<option value="' + source + '">' + source + '</option>');
+                    });
+                });
+
+                // Populate destinations
+                $('select[name="destination"]').each(function() {
+                    var destinationSelect = $(this);
+                    destinations.forEach(function(destination) {
+                        destinationSelect.append('<option value="' + destination + '">' + destination + '</option>');
+                    });
+                });
+            });
+
+            // Auto-fill the amount field based on selected source and destination
+            $('select[name="source"], select[name="destination"]').change(function() {
+                var form = $(this).closest('form');
+                var source = form.find('select[name="source"]').val();
+                var destination = form.find('select[name="destination"]').val();
+
+                if (source && destination) {
+                    $.ajax({
+                        url: '/get_amount',
+                        method: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({source: source, destination: destination}),
+                        success: function(response) {
+                            form.find('input[name="amount"]').val(response.amount);
+                        }
+                    });
+                }
+            });
+        });
+    </script>
+    
+</body>
+</html>
